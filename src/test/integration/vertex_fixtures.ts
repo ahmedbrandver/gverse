@@ -15,10 +15,12 @@ export class Pet extends Gverse.Vertex {
   breed: string = ""
   origin?: Origin
   owner?: Owner
-  beforeCreatedSet = false
+  beforeCreateSet = false
   afterCreateSet = false
   beforeUpdateSet = false
   afterUpdateSet = false
+  beforeDeleteSet = false
+  afterDeleteSet = false
 
   _edges: any = {
     owner: Gverse.Edge.toVertex(Owner),
@@ -42,7 +44,7 @@ export class Pet extends Gverse.Vertex {
     return updated as Pet
   }
   async beforeCreate() {
-    this.beforeCreatedSet = true
+    this.beforeCreateSet = true
   }
   async afterCreate() {
     this.afterCreateSet = true
@@ -53,6 +55,15 @@ export class Pet extends Gverse.Vertex {
   async afterUpdate() {
     this.afterUpdateSet = true
   }
+  async beforeDelete() {
+    this.beforeDeleteSet = true
+  }
+  async afterDelete() {
+    this.afterDeleteSet = true
+  }
+  // async loadFrom(graph: Gverse.Graph): Promise<Pet> {
+  //   return graph.load(this) as Pet
+  // }
 }
 
 export class Owner extends Gverse.Vertex {
@@ -88,7 +99,8 @@ export class VertexFixtures {
   public origin?: Origin
 
   private async clear() {
-    await Promise.all([conn.clear("Pet"), conn.clear("Owner")])
+    await conn.clear(Pet.name)
+    await conn.clear(Owner.name)
     await conn.applySchema(
       "name: string @index(exact) @lang . \n" + "<origin>: uid @reverse . \n"
     )

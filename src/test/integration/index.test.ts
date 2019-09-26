@@ -18,11 +18,11 @@ describe("Gverse", () => {
     const conn = new Gverse.Connection(config)
     const type = "TestVertex"
 
-    beforeAll(() => {
-      conn.connect()
+    beforeAll(async () => {
+      await conn.connect()
     })
-    afterAll(() => {
-      conn.disconnect()
+    afterAll(async () => {
+      await conn.disconnect()
     })
 
     beforeEach(async () => {
@@ -66,8 +66,19 @@ describe("Gverse", () => {
       await conn.newTransaction(true).delete({ uid: newUid })
       const res = await conn
         .newTransaction(true)
-        .query(`{pets(func:eq(uid,${newUid})) {uid}}`)
-      expect(res).toBeUndefined()
+        .query(`{ pets(func:uid(${newUid})) @filter(eq(type,${type})) {uid} }`)
+      expect(res.pets).toEqual([])
+    })
+    it("retries conflicting transactions", async () => {
+      const tx = conn.newTransaction(true)
+      const uid = await tx.mutate({
+        pet: { name: "Transient", type: type }
+      })
+      await Promise.all([
+        conn.newTransaction(true).mutate({ uid, name: "Name" }),
+        conn.newTransaction(true).delete({ uid }),
+        conn.newTransaction(true).mutate({ uid, name: "New Name" })
+      ])
     })
   })
   describe("Graph", () => {

@@ -23,6 +23,7 @@ describe("Vertex", () => {
   })
 
   beforeEach(async () => {
+    await conn.clear(Pet.name)
     fixtures = await new VertexFixtures().build()
     pet = fixtures.pet || fail()
     owner = fixtures.owner || fail()
@@ -131,19 +132,35 @@ describe("Vertex", () => {
   })
   describe("hooks", () => {
     it("calls before and after create", async () => {
-      expect(pet.beforeCreatedSet).toBe(true)
-      expect(pet.afterCreateSet).toBe(true)
+      let pet = new Pet()
+      expect(pet.beforeCreateSet).toBe(false)
+      expect(pet.afterCreateSet).toBe(false)
+      pet = (await graph.create(pet)) as Pet
+      await graph.save(pet) // apply afterCreate
       const petFromGraph = (await pet.loadFrom(graph)) as Pet
-      if (!petFromGraph) fail("Not found")
-      else expect(petFromGraph.beforeCreatedSet).toBe(true)
+      expect(petFromGraph).toBeDefined()
+      expect(petFromGraph.beforeCreateSet).toBe(true)
+      expect(petFromGraph.afterCreateSet).toBe(true)
     })
+
     it("calls before and after update", async () => {
-      expect(pet.beforeUpdateSet).toBe(false) // precondition
+      expect(pet.beforeUpdateSet).toBe(false)
       pet.name = "Garfield"
-      await pet.saveInto(graph)
+      await pet.saveInto(graph) // apply beforeUpdate
+      await pet.saveInto(graph) // apply afterUpdate
       const petFromGraph = (await pet.loadFrom(graph)) as Pet
-      if (!petFromGraph) fail("Not found")
-      else expect(petFromGraph.beforeUpdateSet).toBe(true)
+      expect(petFromGraph).toBeDefined()
+      expect(petFromGraph.beforeUpdateSet).toBe(true)
+      expect(petFromGraph.afterUpdateSet).toBe(true)
+    })
+
+    it("calls before and after delete", async () => {
+      expect(pet.beforeDeleteSet).toBe(false)
+      expect(pet.afterDeleteSet).toBe(false)
+      let deletedPet = await pet.deleteFrom(graph)
+      expect(deletedPet).toBeDefined()
+      expect(pet.beforeDeleteSet).toBe(true)
+      expect(pet.afterDeleteSet).toBe(true)
     })
   })
   describe("language support", () => {
